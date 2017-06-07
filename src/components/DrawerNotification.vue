@@ -1,11 +1,7 @@
 <template>
-<div class="alert"
-     :class="[alertClass, {
-       'alert-dismissable': !persistent,
-       'toast-pf': toast,
-      }]">
-
-  <bs-dropdown v-if="showDropdown">
+<div class="drawer-pf-notification"
+     :class="{unread, 'expanded-notification': $parent.$parent.expanded}">
+  <bs-dropdown v-if="showDropdown" class="pull-right dropdown-kebab-pf" type="link">
     <slot name="dropdown" :actions="actions">
       <li v-for="action in actions"
           :role="isSeparator(action) ? 'separator' : 'menuitem'"
@@ -23,11 +19,6 @@
     </slot>
   </bs-dropdown>
 
-  <button v-show="!persistent && !toast" @click="dismiss"
-          type="button" class="close" data-dismiss="alert" aria-hidden="true">
-    <span class="pficon pficon-close"></span>
-  </button>
-
   <button type="button" v-if="action && action.name"
           class="pull-right btn"
           :class="[buttonClass]"
@@ -36,8 +27,16 @@
     {{action.name}}
   </button>
 
-  <span class="pficon" :class="[typeIcon]"></span>
-  <slot></slot>
+  <span class="pficon pull-left" :class="[typeIcon]"></span>
+  <span class="drawer-pf-notification-message">
+    <slot>{{message}}</slot>
+  </span>
+  <span v-if="date || time || $slots.info" class="drawer-pf-notification-info">
+    <slot name="info">
+      <span v-if="date" class="date">{{date}}</span>
+      <span v-if="time" class="time">{{time}}</span>
+    </slot>
+  </span>
 </div>
 </template>
 
@@ -45,7 +44,7 @@
 import VueStrap from '../vue-strap';
 
 export default {
-  name: 'pf-toast-notification',
+  name: 'pf-drawer-notification',
 
   components: {
     BsDropdown: VueStrap.dropdown,
@@ -54,30 +53,19 @@ export default {
   props: {
     action: Object,
     actions: Array,
-    delay: {
-      type: Number,
-      default: 8000,
-    },
+    message: String,
+    date: String,
+    time: String,
+    unread: Boolean,
     type: {
       type: String,
       default: 'info',
-    },
-    toast: {
-      type: Boolean,
-      default: false,
-    },
-    persistent: {
-      type: Boolean,
-      default: false,
     },
   },
 
   computed: {
     showDropdown() {
-      return this.toast && this.actions && this.actions.length;
-    },
-    alertClass() {
-      return `alert-${this.type || 'info'}`;
+      return this.$slots.dropdown || (this.actions && this.actions.length);
     },
     buttonClass() {
       if (!this.action || !this.action.button) {
@@ -99,46 +87,16 @@ export default {
     },
   },
 
-  watch: {
-    toast: {
-      handler() {
-        this.updateTimeout();
-      },
-      immediate: true,
-    },
-    delay() {
-      this.updateTimeout();
-    },
-    persistent() {
-      this.updateTimeout();
-    },
-  },
-
   methods: {
-    updateTimeout() {
-      if (this._timeout) {
-        clearTimeout(this._timeout);
-      }
-      if (this.toast && !this.persistent) {
-        this._timeout = setTimeout(this.dismiss, this.delay);
-      }
-    },
-    isSeparator(action) {
-      return action == '-' || action.separator;
-    },
-    dismiss() {
-      this.$emit('dismiss', this);
-      // workaround race conditions in event dispatching and handling in parent component
-      if (this.toast && !this.persistent && this.$parent.notifications && this.$parent.notifications.length) {
-        setTimeout(this.dismiss, 250);
-      }
-    },
     triggered(action) {
       if (typeof action.handler == 'function') {
         action.handler(action);
       }
       this.$emit(action.emit || 'action', action);
-    }
+    },
+    isSeparator(action) {
+      return action == '-' || action.separator;
+    },
   }
 };
 </script>
